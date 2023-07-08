@@ -2,36 +2,40 @@ import React, { useState } from 'react';
 import axios from 'axios';
 
 const predefinedPrompts = [
-  'Enhance the descriptions and update the data within the CV',
-  'Enhance the social medias and update the data within the CV',
-  // Add more predefined prompts as needed
+  'Enhance the generated CV with better grammar and sentence structure. Dont increase the word count.Keep the format in JSON.',
+  'Improve the punctuation and word usage in the generated CV. Dont increase the word count. Keep the format in JSON.',
 ];
 
 function App() {
   const [userPrompt, setUserPrompt] = useState('');
   const [responses, setResponses] = useState([]);
+  const [loading, setLoading] = useState(false);
 
   const handleUserPromptChange = (e) => {
     setUserPrompt(e.target.value);
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    const prompts = [userPrompt, ...predefinedPrompts];
+    setLoading(true);
+    setResponses([]);
 
-    const requests = prompts.map((prompt) =>
-      axios.post('http://localhost:3000/chat', { prompt })
-    );
-
-    axios
-      .all(requests)
-      .then((responses) => {
-        const updatedResponses = responses.map((res) => res.data.text);
-        setResponses(updatedResponses);
-      })
-      .catch((error) => {
+    let prompt = userPrompt + " in JSON format.";
+    for (let i = 0; i <= predefinedPrompts.length; i++) {
+      try {
+        const res = await axios.post('http://localhost:3000/chat', { prompt });
+        let responseText = res.data.text;
+        // responseText = responseText.trim();
+        const JSONtext = JSON.parse(responseText);
+        console.log(JSONtext);
+        setResponses((prevResponses) => [...prevResponses, responseText]);
+        prompt = `${responseText}\n${predefinedPrompts[i]}`;
+      } catch (error) {
         console.log(error);
-      });
+      }
+    }
+
+    setLoading(false);
   };
 
   return (
@@ -43,10 +47,15 @@ function App() {
           onChange={handleUserPromptChange}
           placeholder="Enter your text"
         />
-        <button type="submit">Submit</button>
+        <button type="submit" disabled={loading}>
+          {loading ? 'Loading...' : 'Submit'}
+        </button>
       </form>
       {responses.map((response, index) => (
-        <p key={index}>{response}</p>
+        <div key={index}>
+          <h2>Response {index + 1}</h2>
+          <p>{response}</p>
+        </div>
       ))}
     </>
   );
